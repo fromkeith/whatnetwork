@@ -78,6 +78,7 @@ const (
     BasicError_UnexpectedEof        BasicErrorType = "UnexpectedEof"
     BasicError_BadDataReceived      BasicErrorType = "BadDataReceived"
     BasicError_Unknown              BasicErrorType = "Unknown"
+    BasicError_ForcedClosed         BasicErrorType = "ForcedClosed"
 )
 
 type BasicError struct {
@@ -167,6 +168,13 @@ func ExtractBasicError(err error) (b BasicError) {
         } else if opErr.Op == "WSARecv" {
             b.BasicError = BasicError_UnexpectedEof
             return
+        } else if opErr.Op == "WSASend" {
+            if opErr.Err != nil {
+                if strings.Index(opErr.Err.Error(), "forcibly closed") != -1 {
+                    b.BasicError = BasicError_ForcedClosed
+                    return
+                }
+            }
         }
     } else if err == io.EOF {
         b.BasicError = BasicError_UnexpectedEof
