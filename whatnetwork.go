@@ -69,6 +69,14 @@ import (
     "strings"
 )
 
+var (
+    logger      func(fmt string, args... interface{})
+)
+
+func init() {
+    logger = log.Printf
+}
+
 type BasicErrorType string
 
 const (
@@ -109,6 +117,11 @@ var (
     http_malformedPrefix = "malformed HTTP response"
 )
 
+
+func SetLogger(l func(fmt string, args... interface{})) {
+    logger = l
+}
+
 func IsConnectionError(err error) bool {
     var basic BasicError
     if b, ok := err.(BasicError); !ok {
@@ -128,14 +141,14 @@ func IsConnectionError(err error) bool {
 }
 
 func ExtractBasicError(err error) (b BasicError) {
-    log.Printf("Error: %T %#v \t\t'%s'\n", err, err, err.Error())
+    logger("Error: %T %#v \t\t'%s'\n", err, err, err.Error())
     b.Cause = err
     if urlErr, ok := err.(*url.Error); ok {
         if opErr, ok := urlErr.Err.(*net.OpError); ok {
-            log.Printf("net.OpError: %T %#v\n", opErr, opErr)
+            logger("net.OpError: %T %#v\n", opErr, opErr)
             if opErr.Op == "dial" {
                 if opErr2, ok := opErr.Err.(*net.OpError); ok {
-                    log.Printf("net.OpError2: %T %#v\n", opErr2, opErr2)
+                    logger("net.OpError2: %T %#v\n", opErr2, opErr2)
                     if opErr2.Op == "ConnectEx" {
                         //opErr:  &net.OpError{Op:"dial", Net:"tcp", Addr:(*net.TCPAddr)(0xc0840b3b70), Err:(*net.OpError)(0xc08408cd00)}
                         //opErr2: &net.OpError{Op:"ConnectEx", Net:"tcp", Addr:net.Addr(nil), Err:0x274d}
@@ -153,13 +166,13 @@ func ExtractBasicError(err error) (b BasicError) {
     } else if opErr, ok := err.(*net.OpError); ok {
         if opErr.Op == "dial" {
             if sysError, ok := opErr.Err.(*os.SyscallError); ok {
-                log.Printf("os.SyscallError: %#v\n", sysError)
+                logger("os.SyscallError: %#v\n", sysError)
                 if sysError.Syscall == "GetAddrInfoW" {
                     b.BasicError = BasicError_CantResolveHost
                     return
                 }
             } else if opErr2, ok := opErr.Err.(*net.OpError); ok {
-                log.Printf("net.OpError %#v\n", opErr2)
+                logger("net.OpError %#v\n", opErr2)
                 if opErr2.Op == "ConnectEx" {
                     b.BasicError = BasicError_CantConnectToHost
                     return
@@ -221,7 +234,7 @@ func CheckNetworkConnectionAndHost(extraUrl string) (ConnectionStatus, error) {
         for k := range addrs {
             if ipAddr, ok := addrs[k].(*net.IPAddr); ok {
                 if ipAddr.IP.IsLoopback() {
-                    log.Println("IsLoopback")
+                    logger("IsLoopback")
                     continue
                 }
                 nonLoopbackAddrs++
