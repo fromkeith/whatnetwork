@@ -219,13 +219,13 @@ func CheckNetworkConnectionAndHost(extraUrl string) (ConnectionStatus, error) {
     if len(interfaces) == 0 {
         return ConnectionStatus_NoInterfaces, nil
     }
-    interfacesUp := 0
+    //interfacesUp := 0
     nonLoopbackAddrs := 0
     for i := range interfaces {
         if interfaces[i].Flags & net.FlagUp == 0 {
             continue
         }
-        interfacesUp++
+        //interfacesUp++
 
         addrs, err := interfaces[i].Addrs()
         if err != nil {
@@ -241,9 +241,11 @@ func CheckNetworkConnectionAndHost(extraUrl string) (ConnectionStatus, error) {
             }
         }
     }
-    if interfacesUp == 0 {
-        return ConnectionStatus_NoInterfacesUp, nil
-    }
+    // on windows seeing a bug where we get 0 interfaces up.. but still have
+    // a internet connection...
+    // if interfacesUp == 0 {
+    //     return ConnectionStatus_NoInterfacesUp, nil
+    // }
     if nonLoopbackAddrs == 0 {
         return ConnectionStatus_NoNonLoopbacksFound, nil
     }
