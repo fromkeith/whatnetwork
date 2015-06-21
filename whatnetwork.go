@@ -212,42 +212,47 @@ func CheckNetworkConnection() (ConnectionStatus, error) {
 // Checks the same stuff as CheckNetworkConnection, expect will also
 //  try a HEAD request to the give url
 func CheckNetworkConnectionAndHost(extraUrl string) (ConnectionStatus, error) {
-    interfaces, err := net.Interfaces()
-    if err != nil {
-        return "", err
-    }
-    if len(interfaces) == 0 {
-        return ConnectionStatus_NoInterfaces, nil
-    }
-    //interfacesUp := 0
-    nonLoopbackAddrs := 0
-    for i := range interfaces {
-        if interfaces[i].Flags & net.FlagUp == 0 {
-            continue
-        }
-        //interfacesUp++
-
-        addrs, err := interfaces[i].Addrs()
+    return CheckNetworkConnectionAndHostOptInterface(extraUrl, true)
+}
+func CheckNetworkConnectionAndHostOptInterface(extraUrl string, testInterfaces bool) (ConnectionStatus, error) {
+    if testInterfaces {
+        interfaces, err := net.Interfaces()
         if err != nil {
             return "", err
         }
-        for k := range addrs {
-            if ipAddr, ok := addrs[k].(*net.IPAddr); ok {
-                if ipAddr.IP.IsLoopback() {
-                    logger("IsLoopback")
-                    continue
+        if len(interfaces) == 0 {
+            return ConnectionStatus_NoInterfaces, nil
+        }
+        //interfacesUp := 0
+        nonLoopbackAddrs := 0
+        for i := range interfaces {
+            if interfaces[i].Flags & net.FlagUp == 0 {
+                continue
+            }
+            //interfacesUp++
+
+            addrs, err := interfaces[i].Addrs()
+            if err != nil {
+                return "", err
+            }
+            for k := range addrs {
+                if ipAddr, ok := addrs[k].(*net.IPAddr); ok {
+                    if ipAddr.IP.IsLoopback() {
+                        logger("IsLoopback")
+                        continue
+                    }
+                    nonLoopbackAddrs++
                 }
-                nonLoopbackAddrs++
             }
         }
-    }
-    // on windows seeing a bug where we get 0 interfaces up.. but still have
-    // a internet connection...
-    // if interfacesUp == 0 {
-    //     return ConnectionStatus_NoInterfacesUp, nil
-    // }
-    if nonLoopbackAddrs == 0 {
-        return ConnectionStatus_NoNonLoopbacksFound, nil
+        // on windows seeing a bug where we get 0 interfaces up.. but still have
+        // a internet connection...
+        // if interfacesUp == 0 {
+        //     return ConnectionStatus_NoInterfacesUp, nil
+        // }
+        if nonLoopbackAddrs == 0 {
+            return ConnectionStatus_NoNonLoopbacksFound, nil
+        }
     }
 
     var testUrls []string
@@ -260,7 +265,7 @@ func CheckNetworkConnectionAndHost(extraUrl string) (ConnectionStatus, error) {
     testUrls[0] = "http://www.google.com"
 
     for i := range testUrls {
-        _, err = http.Head(testUrls[i])
+        _, err := http.Head(testUrls[i])
         if err != nil {
             basicErr := ExtractBasicError(err)
             if basicErr.BasicError == BasicError_CantFindHost ||
